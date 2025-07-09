@@ -20,7 +20,7 @@ def get_args():
     parser.add_argument("--num_groups_in_GN", type= int, default= 4, help= "Number of groups in GroupNorm layer. Note: channels (means after init_dim) must be divisible by num_groups_in_GN")
     parser.add_argument("-sc","--self-condition", action= "store_true", help= "if self-condition flag given then model will train with self-condition")
     parser.add_argument("--adam_betas", type= float, nargs= 2, default= (0.9, 0.999), help="Adam first and second momentum")
-    parser.add_argument("-fa" ,"--fused_adam", action= 'store_ture', help= "If flag given adam uses fused parameters    update")
+    parser.add_argument("-fa" ,"--fused_adam", action= 'store_true', help= "If flag given adam uses fused parameters    update")
     parser.add_argument("--weight_decay", type= float, default= 0.01, help= "weight decay rate in adam optimizer")
     parser.add_argument("--T", type= int, default= 1000, help= "Total diffusion time steps")
     parser.add_argument("--model_mean_type", action= 'store', default= "EPSILON", help= "Model mean prediction type from [START_X, EPSILON, PREVIOUS_X] one of these (e.g, --model_mean_type EPSILON)")
