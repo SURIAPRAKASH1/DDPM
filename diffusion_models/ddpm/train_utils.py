@@ -120,14 +120,14 @@ def train(rank: int, world_size:int):
     start = time.time()
     for step, (x0s, _) in enumerate(infinite_dataloader):
         # move data to device
-        x0s = x0s.to(device, non_blocking = True if device == 'cuda' else False)
+        x0s = x0s.to(rank, non_blocking = True if torch.cuda.is_available() else False)
         optimizer.zero_grad() 
 
         # draw t uniformaly for every sample in a batch
         t = torch.randint(1, args.T, (x0s.size(0), )).long().to(rank)
 
         # when using bflaot16 we don't need loss scaling
-        with torch.autocast(device_type = device, dtype= torch.bfloat16):
+        with torch.autocast(device_type = rank, dtype= torch.bfloat16):
             # self condition
             x_self_cond = None
             if args.self_condition and random.random() < 0.5:
