@@ -117,8 +117,9 @@ def train(world_size: int, rank: int):
     # Optimization Loop
     # -----------------
 
+    # infinite dataloader, we can trian model as long as we wanted !.
     infinite_dataloader = cycle(dataloader)
-
+    
     start = time.time()
     for step, (x0s, _) in enumerate(infinite_dataloader):
         # move data to device
@@ -126,8 +127,9 @@ def train(world_size: int, rank: int):
         optimizer.zero_grad() 
 
         # draw t uniformaly for every sample in a batch
-        t = torch.randint(1, args.T, (x0s.size(0), ), ).long().to(rank)
+        t = torch.randint(1, args.T, (x0s.size(0), )).long().to(rank)
 
+        # when using bflaot16 we don't need loss scaling
         with torch.autocast(device_type = device, dtype= torch.bfloat16):
             # self condition
             x_self_cond = None
@@ -146,7 +148,7 @@ def train(world_size: int, rank: int):
         optimizer.step()
 
         # save checkpoint for given ckp_interval and final steps
-        if (step % args.ckp_interval == 0 or step == args.steps) and (rank == 0 or rank == device):
+        if (step + 1 % args.ckp_interval == 0 or step == args.steps) and (rank == 0 or rank == device):
             if is_ddp:
                 ckp = model.module.state_dict()
             else:
