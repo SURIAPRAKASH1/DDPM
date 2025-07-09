@@ -146,7 +146,7 @@ def train(world_size: int, rank: int):
         optimizer.step()
 
         # save checkpoint for given ckp_interval
-        if step == args.ckp_interval and (rank == 0 or rank == device):
+        if step % args.ckp_interval == 0 and (rank == 0 or rank == device):
             if is_ddp:
                 ckp = model.module.state_dict()
             else:
