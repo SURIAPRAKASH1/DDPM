@@ -58,9 +58,8 @@ def train(rank: int, world_size:int):
     # -----------------
     #  DataLoader to handle DDP/Single device
     # -----------------
-    if rank == 0:
-        # build dataset
-        dataset = prepare_dataset(args.dataset_name, preprocessing_pipeline(args.height, args.width))
+    # build dataset
+    dataset = prepare_dataset(args.dataset_name, preprocessing_pipeline(args.height, args.width))
         
     sampler = torch.utils.data.distributed.DistributedSampler(
     dataset, num_replicas=world_size, rank=rank, shuffle=True )
