@@ -2,6 +2,8 @@ import torch
 import torch.optim as optim
 import torch.distributed as dist 
 from torch.nn.parallel import DistributedDataParallel as DDP 
+from torch.utils.data import DataLoader
+from torch.utils.data.distributed import DistributedSampler
 import torch.multiprocessing as mp
 
 from itertools import cycle
@@ -17,7 +19,7 @@ from diffusion_models.ddpm.gaussian_diffusion import (
 )
 from diffusion_models.ddpm.unet import Unet
 from comman.argfile import get_args
-from default_datasets import PrepareDatasetDataLoader, preprocessing_pipeline
+from default_datasets import prepare_dataset, preprocessing_pipeline
 
 # commant line arguments 
 args = get_args()
@@ -57,26 +59,19 @@ def train(rank: int, world_size:int):
     #  DataLoader to handle DDP/Single device
     # -----------------
     if rank == 0:
-        dataset = None 
+        # build dataset
+        dataset = prepare_dataset(args.dataset_name, preprocessing_pipeline(args.height, args.width))
+        
     sampler = torch.utils.data.distributed.DistributedSampler(
     dataset, num_replicas=world_size, rank=rank, shuffle=True )
 
-    dataloader = DataLoader(dataset, batch_size=bs, sampler=sampler, ...)
-    
-    if rank == 0: 
-        D = PrepareDatasetDataLoader(
-            dataset_name= args.dataset_name, 
-            transform= preprocessing_pipeline(args.height, args.width), 
-            pin_memory = True if device == 'cuda' else False,
-            batch_size= args.batch_size, 
-            world_size= world_size, 
-            rank= rank, 
-            shuffle= True, # shuffle is handled correctly in DDP environment
-            num_workers= os.cpu_count() if device == 'cuda' else args.num_workers
-            )
-        dataloader = D.prepare_dataloader()
-        
-    
+    dataloader = DataLoader(dataset, 
+                            batch_size= args.batch_size, 
+                            sampler=sampler, 
+                            num_workers= os.cpu_count() if torch.cuda.is_available() else args.num_workers,
+                            pin_memory = True if torch.cuda.is_available() else False
+                           )
+    if rank == 0:
         print(f"dataset size = {len(D.dataset)}")
         print("Total Batches =", len(dataloader))
         print(f"world_size = {world_size}")
@@ -168,8 +163,9 @@ def train(rank: int, world_size:int):
         if step == args.steps:
             break 
 
-    end = time.time()
-    print("Training time %.2f" % ((end - start )/60), "M")
+    if rank == 0:
+        end = time.time()
+        print("Training time %.2f" % ((end - start )/60), "M")
 
     # destroy ddp
     if is_ddp:
