@@ -19,9 +19,6 @@ from diffusion_models.ddpm.unet import Unet
 from comman.argfile import get_args
 from default_datasets import PrepareDatasetDataLoader, preprocessing_pipeline
 
-# current device
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
 # commant line arguments 
 args = get_args()
 
@@ -48,7 +45,7 @@ def clean_up():
 
 def train(rank: int, world_size:int):
     is_ddp = True if world_size > 1 else False
-
+    
     if is_ddp:
         print("It's a DDP training !")
         print(f"Initializing DDP Rank [{rank}]")
@@ -59,7 +56,14 @@ def train(rank: int, world_size:int):
     # -----------------
     #  DataLoader to handle DDP/Single device
     # -----------------
-    if rank == 0 or rank == device: 
+    if rank == 0:
+        dataset = None 
+    sampler = torch.utils.data.distributed.DistributedSampler(
+    dataset, num_replicas=world_size, rank=rank, shuffle=True )
+
+    dataloader = DataLoader(dataset, batch_size=bs, sampler=sampler, ...)
+    
+    if rank == 0: 
         D = PrepareDatasetDataLoader(
             dataset_name= args.dataset_name, 
             transform= preprocessing_pipeline(args.height, args.width), 
@@ -94,7 +98,7 @@ def train(rank: int, world_size:int):
 
     if is_ddp:
         # wrap model with ddp
-        model = DDP(denoise_model, device_ids = rank)
+        model = DDP(denoise_model, device_ids = [rank])
     else:
         model = denoise_model
 
@@ -122,7 +126,7 @@ def train(rank: int, world_size:int):
     start = time.time()
     for step, (x0s, _) in enumerate(infinite_dataloader):
         # move data to device
-        x0s = x0s.to(rank, non_blocking = True if device == 'cuda' else False)
+        x0s = x0s.to(device, non_blocking = True if device == 'cuda' else False)
         optimizer.zero_grad() 
 
         # draw t uniformaly for every sample in a batch
@@ -147,7 +151,7 @@ def train(rank: int, world_size:int):
         optimizer.step()
 
         # save checkpoint for given ckp_interval and final steps
-        if (step + 1 % args.ckp_interval == 0 or step == args.steps) and (rank == 0 or rank == device):
+        if (step + 1 % args.ckp_interval == 0 or step == args.steps) and rank == 0:
             if is_ddp:
                 ckp = model.module.state_dict()
             else:
@@ -172,11 +176,11 @@ def train(rank: int, world_size:int):
         clean_up()
 
 def run():
-    world_size = torch.cuda.device_count() if device == 'cuda' else torch.cpu.device_count() # always 1 (not the core)
+    world_size = torch.cuda.device_count() if torch.cuda.is_available() else torch.cpu.device_count() # always 1 (not the core)
     if world_size > 1:
         mp.spawn(train, args= (world_size, ), nprocs= world_size, join= True)
     else:
-        train(rank = device, world_size)  
+        train(rank = 0, world_size = world_size)  
 
 if __name__ == "__main__":
     run()
