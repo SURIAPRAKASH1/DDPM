@@ -1,0 +1,30 @@
+import argparse
+
+def get_args():
+    """ Parser for command line arguments """
+
+    parser =  argparse.ArgumentParser()
+    parser.add_argument("--steps", type= int, default= 1, help= "total number of steps to train model")
+    parser.add_argument("--lr", type = float, default = 0.0002, help= "learning rate to update parameters")
+    parser.add_argument("--batch_size", type = int, default= 64, help= "batch_size for dataset")
+    parser.add_argument("--height", type = int, default= 32, help = "height of the image")
+    parser.add_argument("--width", type = int, default= 32, help = "width of the image")
+    parser.add_argument("--channels", type=int, default= 3, help= 'number of channels in image')
+    parser.add_argument("--print_interval", type= int, default= 1, help= "when training how often we want to see loss")
+    parser.add_argument("--ckp_interval", type = int, default= 200, help= "Saving models checkpoint for given interval")
+    parser.add_argument("--dataset_name",action= "store", default= "CIFAR10", help= "from [FashionMNIST, CIFAR10, CelebA] one of these")
+    parser.add_argument("--num_workers", default= 0, type= int, help= "Number of workers for loading dataset")
+    parser.add_argument("--init_dim", type= int, help= "Initial channels dim to start conv operations")
+    parser.add_argument("--out_dim", type= int, help = "Output dimentionaly of model.")
+    parser.add_argument("--dim_mults", type= int, nargs= "*", default= (1, 2, 4, 8), help= "Channels multipliers as each resolution stage (e.g., --dim_mults 1 2 4 8)")
+    parser.add_argument("--num_groups_in_GN", type= int, default= 4, help= "Number of groups in GroupNorm layer. Note: channels (means after init_dim) must be divisible by num_groups_in_GN")
+    parser.add_argument("-sc","--self-condition", action= "store_true", help= "if self-condition flag given then model will train with self-condition")
+    parser.add_argument("--adam_betas", type= float, nargs= 2, default= (0.9, 0.999), help="Adam first and second momentum")
+    parser.add_argument("-fa" ,"--fused_adam", action= 'store_ture', help= "If flag given adam uses fused parameters    update")
+    parser.add_argument("--weight_decay", type= float, default= 0.01, help= "weight decay rate in adam optimizer")
+    parser.add_argument("--T", type= int, default= 1000, help= "Total diffusion time steps")
+    parser.add_argument("--model_mean_type", action= 'store', default= "EPSILON", help= "Model mean prediction type from [START_X, EPSILON, PREVIOUS_X] one of these (e.g, --model_mean_type EPSILON)")
+    parser.add_argument("--model_var_type", action= "store", default= "FIXED_LARGE", help= "Model variance prediction type from [FIXED_LARGE, FIXED_SMALL] if ddpm. else if not ddpm then we may learn variance as well so on that cause variance type from [FIXED_LARGE, FIXED_SMALL, LEARNED, LEARNED_RANGE] (e.g., --model_var_type FIXED_LARGE)")
+    parser.add_argument("--loss_type", action= "store", default= "MSE", help= "Objective model want to minimize. if it's ddpm then one of the objective from [MSE, L1, HUBER]. if not ddpm then loss type from [MSE, RESCALED_MSE, KL, RESCALED_KL] (e.g, --loss_type L1)")
+
+    return parser.parse_args()
