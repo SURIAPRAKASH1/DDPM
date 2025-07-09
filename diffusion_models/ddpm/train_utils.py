@@ -71,14 +71,14 @@ def train(rank: int, world_size:int):
                             pin_memory = True if torch.cuda.is_available() else False
                            )
     if rank == 0:
-        print(f"dataset size = {len(D.dataset)}")
+        print(f"dataset size = {len(dataset)}")
         print("Total Batches =", len(dataloader))
         print(f"world_size = {world_size}")
 
     #--------------------
     # Initializing Model
     # -------------------
-
+    
     denoise_model = Unet(
         dim= args.init_dim or args.width, 
         channels= args.channels, 
