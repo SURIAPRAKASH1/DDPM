@@ -46,7 +46,7 @@ def clean_up():
     dist.destroy_process_group()
 
 
-def train(world_size: int, rank: int):
+def train(rank: int, world_size:int):
     is_ddp = True if world_size > 1 else False
 
     if is_ddp:
@@ -59,21 +59,20 @@ def train(world_size: int, rank: int):
     # -----------------
     #  DataLoader to handle DDP/Single device
     # -----------------
-
-    D = PrepareDatasetDataLoader(
-        dataset_name= args.dataset_name, 
-        transform= preprocessing_pipeline(args.height, args.width), 
-        pin_memory = True if device == 'cuda' else False,
-        batch_size= args.batch_size, 
-        world_size= world_size, 
-        rank= rank, 
-        shuffle= True, # shuffle is handled correctly in DDP environment
-        num_workers= os.cpu_count() if device == 'cuda' else args.num_workers
-        )
-    dataloader = D.prepare_dataloader()
+    if rank == 0 or rank == device: 
+        D = PrepareDatasetDataLoader(
+            dataset_name= args.dataset_name, 
+            transform= preprocessing_pipeline(args.height, args.width), 
+            pin_memory = True if device == 'cuda' else False,
+            batch_size= args.batch_size, 
+            world_size= world_size, 
+            rank= rank, 
+            shuffle= True, # shuffle is handled correctly in DDP environment
+            num_workers= os.cpu_count() if device == 'cuda' else args.num_workers
+            )
+        dataloader = D.prepare_dataloader()
+        
     
-    # some basic info
-    if rank == 0 or rank == device:
         print(f"dataset size = {len(D.dataset)}")
         print("Total Batches =", len(dataloader))
         print(f"world_size = {world_size}")
@@ -177,7 +176,7 @@ def run():
     if world_size > 1:
         mp.spawn(train, args= (world_size, ), nprocs= world_size, join= True)
     else:
-        train(world_size, rank = device)  
+        train(rank = device, world_size)  
 
 if __name__ == "__main__":
     run()
