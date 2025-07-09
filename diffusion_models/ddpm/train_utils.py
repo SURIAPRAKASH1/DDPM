@@ -4,8 +4,14 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP 
 import torch.multiprocessing as mp
 
-from .gaussian_diffusion import GaussianDiffusion, get_linear_beta_schedule, ModelMeanType, ModelVarType, LossType
-from .unet import Unet 
+from diffusion_models.ddpm.gaussian_diffusion import (
+    GaussianDiffusion,
+    get_linear_beta_schedule, 
+    ModelMeanType,
+    ModelVarType, 
+    LossType
+)
+from diffusion_models.ddpm.unet import Unet
 
 from itertools import cycle
 import sys, random, os, time
