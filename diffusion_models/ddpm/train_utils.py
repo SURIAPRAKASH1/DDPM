@@ -67,7 +67,7 @@ def train(world_size: int, rank: int):
         batch_size= args.batch_size, 
         world_size= world_size, 
         rank= rank, 
-        shuffle= True, # shuffle it handled correctly
+        shuffle= True, # shuffle is handled correctly in DDP environment
         num_workers= os.cpu_count() if device == 'cuda' else args.num_workers
         )
     dataloader = D.prepare_dataloader()
