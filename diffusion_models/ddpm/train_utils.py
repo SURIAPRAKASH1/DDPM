@@ -145,8 +145,8 @@ def train(world_size: int, rank: int):
         loss.backward()
         optimizer.step()
 
-        # save checkpoint for given ckp_interval
-        if step % args.ckp_interval == 0 and (rank == 0 or rank == device):
+        # save checkpoint for given ckp_interval and final steps
+        if (step % args.ckp_interval == 0 or step == args.steps) and (rank == 0 or rank == device):
             if is_ddp:
                 ckp = model.module.state_dict()
             else:
@@ -156,7 +156,7 @@ def train(world_size: int, rank: int):
             print(f"Step {step} | Training checkpoint is saved at {PATH}")
 
         # printing loss once in a while
-        if step % args.print_interval == 0:
+        if step % args.print_interval == 0 or step == args.steps:
             print(f"Rank [{rank}] {step}/{args.steps}: loss: {loss.item()}")
         
         # break the training when hit the total training steps
