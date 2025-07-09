@@ -4,6 +4,10 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP 
 import torch.multiprocessing as mp
 
+from itertools import cycle
+import sys, random, os, time
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))) 
+
 from diffusion_models.ddpm.gaussian_diffusion import (
     GaussianDiffusion,
     get_linear_beta_schedule, 
@@ -12,12 +16,6 @@ from diffusion_models.ddpm.gaussian_diffusion import (
     LossType
 )
 from diffusion_models.ddpm.unet import Unet
-
-from itertools import cycle
-import sys, random, os, time
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))) 
-
-# here we importing after we added root dir to the sys paths else we don't know what going on outside of current dir
 from comman.argfile import get_args
 from default_datasets import PrepareDatasetDataLoader, preprocessing_pipeline
 
