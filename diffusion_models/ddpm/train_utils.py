@@ -62,7 +62,7 @@ def train(rank: int, world_size:int):
     dataset = prepare_dataset(args.dataset_name, preprocessing_pipeline(args.height, args.width))
     
     sampler = None
-    if ddp:
+    if is_ddp:
         sampler = torch.utils.data.distributed.DistributedSampler(
         dataset, num_replicas=world_size, rank=rank, shuffle=True )
 
@@ -92,11 +92,8 @@ def train(rank: int, world_size:int):
     ).to(rank)
     torch.compile(denoise_model)
     
-    if is_ddp:
-        # wrap model with ddp
-        model = DDP(denoise_model, device_ids = [rank])
-    else:
-        model = denoise_model
+    # wrap model with ddp if is_ddp
+    model = DDP(denoise_model, device_ids = [rank]) if is_ddp else denoise_model
     # AdamW optimizer
     optimizer = optim.AdamW(model.parameters(), 
                             lr = args.lr, 
