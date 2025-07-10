@@ -60,14 +60,17 @@ def train(rank: int, world_size:int):
     # -----------------
     # build dataset
     dataset = prepare_dataset(args.dataset_name, preprocessing_pipeline(args.height, args.width))
-        
-    sampler = torch.utils.data.distributed.DistributedSampler(
-    dataset, num_replicas=world_size, rank=rank, shuffle=True )
+    
+    sampler = None
+    if ddp:
+        sampler = torch.utils.data.distributed.DistributedSampler(
+        dataset, num_replicas=world_size, rank=rank, shuffle=True )
 
     dataloader = DataLoader(dataset, 
                             batch_size= args.batch_size, 
+                            shuffle = False if sampler else True
                             sampler=sampler, 
-                            num_workers= os.cpu_count() if torch.cuda.is_available() else args.num_workers,
+                            num_workers= min(os.cpu_count(), args.num_workers) if torch.cuda.is_available() else args.num_workers,
                             pin_memory = True if torch.cuda.is_available() else False
                            )
     if rank == 0:
@@ -78,7 +81,6 @@ def train(rank: int, world_size:int):
     #--------------------
     # Initializing Model
     # -------------------
-    
     denoise_model = Unet(
         dim= args.init_dim or args.width, 
         channels= args.channels, 
@@ -89,20 +91,18 @@ def train(rank: int, world_size:int):
         dropout= args.dropout
     ).to(rank)
     torch.compile(denoise_model)
-
+    
     if is_ddp:
         # wrap model with ddp
         model = DDP(denoise_model, device_ids = [rank])
     else:
         model = denoise_model
-
     # AdamW optimizer
     optimizer = optim.AdamW(model.parameters(), 
                             lr = args.lr, 
                             betas= tuple(args.adam_betas), 
                             weight_decay= args.weight_decay,
                             fused= args.fused_adam)
-
     # initiating gaussian diffusion
     gd = GaussianDiffusion(
         betas = get_linear_beta_schedule(args.T) ,
@@ -113,51 +113,43 @@ def train(rank: int, world_size:int):
     # ------------------
     # Optimization Loop
     # -----------------
-
-    # infinite dataloader, we can trian model as long as we wanted !.
-    infinite_dataloader = cycle(dataloader)
-    
+    data_iter = iter(dataloader)
     start = time.time()
-    for step, (x0s, _) in enumerate(infinite_dataloader):
-        # move data to device
-        x0s = x0s.to(rank, non_blocking = True if torch.cuda.is_available() else False)
-        optimizer.zero_grad() 
-
-        # draw t uniformaly for every sample in a batch
+    for step in range(args.steps):
+        if isinstance(sampler, DistributedSampler):
+            sampler.set_epoch(step)
+        try:
+            x0s, _ = next(data_iter)
+        except StopIteration:
+            data_iter = iter(dataloader)
+            x0s, _ = next(data_iter)
+        x0s = x0s.to(rank, non_blocking=True if torch.cuda.is_available() else False)
+        optimizer.zero_grad()
+    
         t = torch.randint(1, args.T, (x0s.size(0), )).long().to(rank)
-
-        # when using bflaot16 we don't need loss scaling
-        with torch.autocast(device_type = rank, dtype= torch.bfloat16):
-            # self condition
+        device_type = "cuda" if torch.cuda.is_available() else "cpu"
+        with torch.autocast(device_type=device_type, dtype=torch.bfloat16):
             x_self_cond = None
             if args.self_condition and random.random() < 0.5:
                 with torch.no_grad():
                     xt = gd.q_sample(x0s, t)
-                    pred_xstart =  gd.p_mean_variance(model = model, x = xt, t = t)['pred_xstart']
-                    x_self_cond = pred_xstart
-                    x_self_cond.detach_()
-
-            # forward-prop & compute loss
-            loss = gd.training_losses(model = model, x_start= x0s, t = t, model_kwargs= {"x_self_cond" : x_self_cond})
-
-        # back-prop & update parameters
+                    pred_xstart = gd.p_mean_variance(model=model, x=xt, t=t)['pred_xstart']
+                    x_self_cond = pred_xstart.detach()
+            loss = gd.training_losses(model=model, x_start=x0s, t=t, model_kwargs={"x_self_cond": x_self_cond})
+    
         loss.backward()
         optimizer.step()
-
-        # save checkpoint for given ckp_interval and final steps
-        if (step + 1 % args.ckp_interval == 0 or step == args.steps) and rank == 0:
-            if is_ddp:
-                ckp = model.module.state_dict()
-            else:
-                ckp = model.state_dict() 
-            PATH = "ckp.pt"
+    
+        if ((step + 1) % args.ckp_interval == 0 or step == args.steps) and rank == 0:
+            os.makedirs("checkpoints", exist_ok=True)  # Create the directory if it doesn't exist
+            PATH = f"checkpoints/ckp_{step}.pt"
+            ckp = model.module.state_dict() if is_ddp else model.state_dict()
             torch.save(ckp, PATH)
             print(f"Step {step} | Training checkpoint is saved at {PATH}")
-
-        # printing loss once in a while
+    
         if step % args.print_interval == 0 or step == args.steps:
             print(f"Rank [{rank}] {step}/{args.steps}: loss: {loss.item()}")
-        
+    
         # break the training when hit the total training steps
         if step == args.steps:
             break 
