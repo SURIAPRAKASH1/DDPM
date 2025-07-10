@@ -68,7 +68,7 @@ def train(rank: int, world_size:int):
 
     dataloader = DataLoader(dataset, 
                             batch_size= args.batch_size, 
-                            shuffle = False if sampler else True
+                            shuffle = False if sampler is not None else True,
                             sampler=sampler, 
                             num_workers= min(os.cpu_count(), args.num_workers) if torch.cuda.is_available() else args.num_workers,
                             pin_memory = True if torch.cuda.is_available() else False
