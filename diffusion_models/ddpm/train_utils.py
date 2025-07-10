@@ -139,10 +139,10 @@ def train(rank: int, world_size:int):
     
         if ((step + 1) % args.ckp_interval == 0 or step == args.steps) and rank == 0:
             os.makedirs("checkpoints", exist_ok=True)  # Create the directory if it doesn't exist
-            PATH = f"checkpoints/ckp_{step}.pt"
+            PATH = f"checkpoints/ckp_{step+1}.pt"
             ckp = model.module.state_dict() if is_ddp else model.state_dict()
             torch.save(ckp, PATH)
-            print(f"Step {step} | Training checkpoint is saved at {PATH}")
+            print(f"Step {step+1} | Training checkpoint is saved at {PATH}")
     
         if step % args.print_interval == 0 or step == args.steps:
             print(f"Rank [{rank}] {step}/{args.steps}: loss: {loss.item()}")
