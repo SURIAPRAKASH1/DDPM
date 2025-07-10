@@ -55,8 +55,7 @@ def prepare_dataset(
     
     elif dataset_name == "CelebA":
         # CelebA dataset
-        # celebA_root = "https://drive.google.com/drive/folders/0B7EVK8r0v71pWEZsZE9oNnFzTm8?resourcekey=0-5BR16BdXnb8hVj6CNHKzLg&usp=sharing"
-        celebA_root = "https://www.kaggle.com/datasets/jessicali9530/celeba-dataset"
+        celebA_root = "https://drive.google.com/drive/folders/0B7EVK8r0v71pWEZsZE9oNnFzTm8?resourcekey=0-5BR16BdXnb8hVj6CNHKzLg&usp=sharing"
         dataset = torchvision.datasets.CelebA(celebA_root, split = 'train', target_type = 'attr' ,download = True)
     else:
         raise NotImplementedError(dataset_name)
