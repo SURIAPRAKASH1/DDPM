@@ -25,6 +25,6 @@ def get_args():
     parser.add_argument("--T", type= int, default= 1000, help= "Total diffusion time steps")
     parser.add_argument("--model_mean_type", action= 'store', default= "EPSILON", help= "Model mean prediction type from [START_X, EPSILON, PREVIOUS_X] one of these (e.g, --model_mean_type EPSILON)")
     parser.add_argument("--model_var_type", action= "store", default= "FIXED_LARGE", help= "Model variance prediction type from [FIXED_LARGE, FIXED_SMALL] if ddpm. else if not ddpm then we may learn variance as well so on that cause variance type from [FIXED_LARGE, FIXED_SMALL, LEARNED, LEARNED_RANGE] (e.g., --model_var_type FIXED_LARGE)")
-    parser.add_argument("--loss_type", action= "store", default= "MSE", help= "Objective model want to minimize. if it's ddpm then one of the objective from [MSE, L1, HUBER]. if not ddpm then loss type from [MSE, RESCALED_MSE, KL, RESCALED_KL] (e.g, --loss_type L1)")
+    parser.add_argument("--loss_type", action= "store", default= "HUBER", help= "Objective model want to minimize. if it's ddpm then one of the objective from [MSE, L1, HUBER]. if not ddpm then loss type from [MSE, RESCALED_MSE, KL, RESCALED_KL] (e.g, --loss_type L1)")
     parser.add_argument("--dropout", type= float, default= 0.0, help= "dropout in resnet block")
     return parser.parse_args()
