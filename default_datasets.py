@@ -4,6 +4,8 @@ from torchvision.transforms import v2
 
 from typing import Literal, Iterable, Union
 
+def normalize_img(t):
+    return (t / 255) * 2 - 1
 
 def preprocessing_pipeline(image_height: int, image_width: int):
 
@@ -14,7 +16,8 @@ def preprocessing_pipeline(image_height: int, image_width: int):
             v2.Resize(size = (image_height, image_width), antialias= True),      # v2.Resize() requires input to be tensor
             v2.RandomHorizontalFlip(),
             v2.ToDtype(torch.float32),
-            v2.Lambda(lambda t: (t / 255 ) * 2 - 1)                           # normalize image in range of [-1, 1]
+            v2.Lambda(normalize_img),
+            # v2.Lambda(lambda t: (t / 255 ) * 2 - 1)        # this way of nested lambda function will create can't pickle error in DDP env
         ])
 
     return transform
